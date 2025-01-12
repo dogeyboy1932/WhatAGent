@@ -25,6 +25,8 @@ import {
   isSetupCompleteMessage,
   isToolCallCancellationMessage,
   isToolCallMessage,
+  isShellCommandMessage,
+  isShellResponseMessage,
   isTurnComplete,
   LiveIncomingMessage,
   ModelTurn,
@@ -35,7 +37,10 @@ import {
   ToolCall,
   ToolCallCancellation,
   ToolResponseMessage,
+  ShellCommandMessage,
+  ShellCommandResponse,
   type LiveConfig,
+  ShellResponseMessage,
 } from "../multimodal-live-types";
 import { blobToJSON, base64ToArrayBuffer } from "./utils";
 
@@ -53,6 +58,8 @@ interface MultimodalLiveClientEventTypes {
   turncomplete: () => void;
   toolcall: (toolCall: ToolCall) => void;
   toolcallcancellation: (toolcallCancellation: ToolCallCancellation) => void;
+  shellcommand: (command: string) => void;
+  shellresponse: (response: ShellCommandResponse) => void;
 }
 
 export type MultimodalLiveAPIClientConnection = {
@@ -170,14 +177,28 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
     const response: LiveIncomingMessage = (await blobToJSON(
       blob,
     )) as LiveIncomingMessage;
+
     if (isToolCallMessage(response)) {
       this.log("server.toolCall", response);
       this.emit("toolcall", response.toolCall);
       return;
     }
+
     if (isToolCallCancellationMessage(response)) {
       this.log("receive.toolCallCancellation", response);
       this.emit("toolcallcancellation", response.toolCallCancellation);
+      return;
+    }
+
+    if (isShellCommandMessage(response)) {
+      this.log("server.shellCommand", response);
+      this.emit("shellcommand", response.shellCommand.command);
+      return;
+    }
+
+    if (isShellResponseMessage(response)) {
+      this.log("server.shellResponse", response);
+      this.emit("shellresponse", response.shellResponse);
       return;
     }
 
@@ -235,6 +256,36 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
     } else {
       console.log("received unmatched message", response);
     }
+  }
+
+  /**
+   * Send a shell command to be executed
+   */
+  sendShellCommand(command: string) {
+    const message: ShellCommandMessage = {
+      shellCommand: {
+        command,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    this._sendDirect(message);
+    this.log(`client.shellCommand`, message);
+  }
+
+  /**
+   * Send the response from a shell command execution
+   */
+  sendShellResponse(commandId: string, output: string, error?: string) {
+    const response: ShellCommandResponse = {
+      commandId,
+      output,
+      error,
+      timestamp: new Date().toISOString(),
+    };
+
+    this._sendDirect({ shellResponse: response });
+    this.log(`client.shellResponse`, response.output);
   }
 
   /**
@@ -310,7 +361,7 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
    *  used internally to send all messages
    *  don't use directly unless trying to send an unsupported message type
    */
-  _sendDirect(request: object) {
+  _sendDirect(request: SetupMessage | ClientContentMessage | ToolResponseMessage | RealtimeInputMessage | ShellCommandMessage | ShellResponseMessage) {
     if (!this.ws) {
       throw new Error("WebSocket is not connected");
     }

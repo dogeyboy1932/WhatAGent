@@ -18,7 +18,9 @@ import { useRef, useState } from "react";
 import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
 import SidePanel from "./components/side-panel/SidePanel";
-import { Altair } from "./components/altair/Altair";
+import { Altair } from "./components/altair-tool/Altair";
+import { ShellExecutor } from "./components/shell-executor/shell-executor";
+// import { DatabaseExecutor } from "./components/database/database-executor";
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
 
@@ -31,10 +33,7 @@ const host = "generativelanguage.googleapis.com";
 const uri = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
 
 function App() {
-  // this video reference is used for displaying the active stream, whether that is the webcam or screen capture
-  // feel free to style as you see fit
   const videoRef = useRef<HTMLVideoElement>(null);
-  // either the screen capture, the video or null, if null we hide it
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
   return (
@@ -44,8 +43,11 @@ function App() {
           <SidePanel />
           <main>
             <div className="main-app-area">
-              {/* APP goes here */}
-              <Altair />
+              <div className="tools-container">
+                <Altair />
+                <ShellExecutor />
+                {/* <DatabaseExecutor /> */}
+              </div>
               <video
                 className={cn("stream", {
                   hidden: !videoRef.current || !videoStream,

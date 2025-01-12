@@ -56,7 +56,9 @@ export type LiveOutgoingMessage =
   | SetupMessage
   | ClientContentMessage
   | RealtimeInputMessage
-  | ToolResponseMessage;
+  | ToolResponseMessage
+  | ShellCommandMessage
+  | ShellResponseMessage;
 
 export type SetupMessage = {
   setup: LiveConfig;
@@ -88,13 +90,36 @@ export type LiveFunctionResponse = {
   id: string;
 };
 
+/** Shell Command Types */
+export interface ShellCommand {
+  command: string;
+  timestamp: string;
+}
+
+export interface ShellCommandMessage {
+  shellCommand: ShellCommand;
+}
+
+export interface ShellCommandResponse {
+  commandId: string;
+  output: string;
+  error?: string;
+  timestamp: string;
+}
+
+export interface ShellResponseMessage {
+  shellResponse: ShellCommandResponse;
+}
+
 /** Incoming types */
 
 export type LiveIncomingMessage =
   | ToolCallCancellationMessage
   | ToolCallMessage
   | ServerContentMessage
-  | SetupCompleteMessage;
+  | SetupCompleteMessage
+  | ShellCommandMessage
+  | ShellResponseMessage;
 
 export type SetupCompleteMessage = { setupComplete: {} };
 
@@ -163,6 +188,29 @@ export const isRealtimeInputMessage = (a: unknown): a is RealtimeInputMessage =>
 
 export const isToolResponseMessage = (a: unknown): a is ToolResponseMessage =>
   prop(a, "toolResponse");
+
+export const isShellCommandMessage = (
+  message: any
+): message is ShellCommandMessage => {
+  return (
+    message &&
+    typeof message === "object" &&
+    "shellCommand" in message &&
+    typeof message.shellCommand.command === "string"
+  );
+};
+
+export const isShellResponseMessage = (
+  message: any
+): message is ShellResponseMessage => {
+  return (
+    message &&
+    typeof message === "object" &&
+    "shellResponse" in message &&
+    typeof message.shellResponse.commandId === "string" &&
+    typeof message.shellResponse.output === "string"
+  );
+};
 
 // incoming messages
 export const isSetupCompleteMessage = (a: unknown): a is SetupCompleteMessage =>
@@ -240,3 +288,4 @@ export const isToolCallCancellation = (
   a: unknown,
 ): a is ToolCallCancellationMessage["toolCallCancellation"] =>
   typeof a === "object" && Array.isArray((a as any).ids);
+
