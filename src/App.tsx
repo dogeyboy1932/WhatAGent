@@ -27,6 +27,7 @@ import { Database } from "./components/database-tool/Database";
 
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
+import { UnifiedTool } from "./components/MultiComponent";
 
 
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
@@ -51,11 +52,13 @@ function App() {
           <main>
             <div className="main-app-area">
               <div className="tools-container">
-                <Altair />  
+                {/* <Altair />   */}
 
                 {/* <ShellExecutor /> */}
 
                 {/* <Database /> */}
+
+                <UnifiedTool />
                 
               </div>
               <video
