@@ -34,10 +34,15 @@ export type UseLiveAPIResults = {
   volume: number;
 };
 
+interface UseLiveAPIProps extends MultimodalLiveAPIClientConnection {
+  config?: LiveConfig;
+}
+
 export function useLiveAPI({
   url,
   apiKey,
-}: MultimodalLiveAPIClientConnection): UseLiveAPIResults {
+  config: initialConfig,
+}: UseLiveAPIProps): UseLiveAPIResults {
   const client = useMemo(
     () => new MultimodalLiveClient({ url, apiKey }),
     [url, apiKey],
@@ -45,9 +50,11 @@ export function useLiveAPI({
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
   const [connected, setConnected] = useState(false);
-  const [config, setConfig] = useState<LiveConfig>({
-    model: "models/gemini-2.0-flash-exp",
-  });
+  const [config, setConfig] = useState<LiveConfig>(
+    initialConfig || {
+      model: "models/gemini-2.0-flash-exp",
+    }
+  );
   const [volume, setVolume] = useState(0);
 
   // register audio for streaming server -> speakers

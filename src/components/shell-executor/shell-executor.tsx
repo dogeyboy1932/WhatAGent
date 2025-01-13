@@ -9,12 +9,23 @@ import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
 import { ToolCall } from '../../multimodal-live-types';
 import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
 
-// Type Declarations
-interface CommandHistoryEntry {
-  command: string;
-  output?: string;
-  timestamp: string;
+
+
+// Add this function at the top level
+async function executeCommand(shell: string, command: string, workingDir?: string) {
+  const response = await fetch('http://localhost:3001/api/execute', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ 
+      command: `${shell} /c ${command}`,  // Format command for shell execution
+      timeout: 30000 
+    }),
+  });
+  return response.json();
 }
+
 
 // Function Declaration for shell execution
 export const shellExecutorDeclaration: FunctionDeclaration = {
@@ -41,20 +52,14 @@ export const shellExecutorDeclaration: FunctionDeclaration = {
   },
 };
 
-// Add this function at the top level
-async function executeCommand(shell: string, command: string, workingDir?: string) {
-  const response = await fetch('http://localhost:3001/api/execute', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      command: `${shell} /c ${command}`,  // Format command for shell execution
-      timeout: 30000 
-    }),
-  });
-  return response.json();
+
+// Type Declarations
+interface CommandHistoryEntry {
+  command: string;
+  output?: string;
+  timestamp: string;
 }
+
 
 // Main Component Implementation
 function ShellExecutorComponent() {

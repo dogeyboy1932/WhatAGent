@@ -19,10 +19,15 @@ import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
 import SidePanel from "./components/side-panel/SidePanel";
 import { Altair } from "./components/altair-tool/Altair";
+
+
 import { ShellExecutor } from "./components/shell-executor/shell-executor";
-// import { DatabaseExecutor } from "./components/database/database-executor";
+import { Database } from "./components/database-tool/Database";
+
+
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
+
 
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
 if (typeof API_KEY !== "string") {
@@ -31,6 +36,8 @@ if (typeof API_KEY !== "string") {
 
 const host = "generativelanguage.googleapis.com";
 const uri = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
+
+
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -44,9 +51,12 @@ function App() {
           <main>
             <div className="main-app-area">
               <div className="tools-container">
-                <Altair />
-                <ShellExecutor />
-                {/* <DatabaseExecutor /> */}
+                <Altair />  
+
+                {/* <ShellExecutor /> */}
+
+                {/* <Database /> */}
+                
               </div>
               <video
                 className={cn("stream", {

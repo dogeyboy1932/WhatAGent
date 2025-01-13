@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { ExecuteFileTool } from './lib/execute';
+import { ExecuteFileTool } from './shellExecution-Tool/execute';
+import databaseRoutes from './database-tool/routes';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -8,20 +9,23 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Add database routes
+app.use('/api/database', databaseRoutes);
+
+
+
 app.post('/api/execute', async (req, res) => {
-
-  // console.log(req.body);
-
-  console.log(req.body);
-
-  
-
   try {
     const { command, timeout } = req.body;
     const result = await ExecuteFileTool.execute(command, timeout);
-    res.json(result);
+    
+    // // Store execution result in database
+    // await DatabaseService.safeExecute(
+    //   'INSERT INTO execution_logs (command, output, success, executed_at) VALUES ($1, $2, $3, $4)',
+    //   [command, result.output, result.success, new Date()]
+    // );
 
-    console.log("HI: ", result);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ 
       success: false, 

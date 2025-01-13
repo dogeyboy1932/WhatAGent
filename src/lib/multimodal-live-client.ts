@@ -43,6 +43,7 @@ import {
   ShellResponseMessage,
 } from "../multimodal-live-types";
 import { blobToJSON, base64ToArrayBuffer } from "./utils";
+import { config } from "dotenv";
 
 /**
  * the events that this client will emit
@@ -101,6 +102,8 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
 
   connect(config: LiveConfig): Promise<boolean> {
     this.config = config;
+
+    console.log("config: ", JSON.stringify(config, null, 2));
 
     const ws = new WebSocket(this.url);
 
@@ -369,3 +372,6 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
     this.ws.send(str);
   }
 }
+
+
+
