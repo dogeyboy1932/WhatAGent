@@ -1,65 +1,233 @@
 /**
  * Copyright 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed under the Apache License, Version 2.0
  */
 
-import { useRef, useState } from "react";
-import "./App.scss";
+import { useEffect, useRef, useState } from "react";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
-import SidePanel from "./components/side-panel/SidePanel";
-import { Altair } from "./components/altair-tool/Altair";
+import { useLiveAPIContext } from "./contexts/LiveAPIContext";
+import { type FunctionDeclaration } from "@google/generative-ai";
 
-
-import { ShellExecutor } from "./components/shell-executor/shell-executor";
-import { Database } from "./components/database-tool/Database";
-
-
-import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
-import { UnifiedTool } from "./components/MultiComponent";
+
+// Components
+import SidePanel from "./components/side-panel/SidePanel";
+import ControlTray from "./components/control-tray/ControlTray";
+import { Alert, AlertDescription } from './components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
+// Styles
+import "./App.scss";
 
 
-const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
-if (typeof API_KEY !== "string") {
-  throw new Error("set REACT_APP_GEMINI_API_KEY in .env");
+
+import { ToolCall } from "./multimodal-live-types";
+
+
+// Tool declarations and utilities
+import { DatabaseQuery, executeQuery } from './tools/database-tool';
+import { ShellTool, executeCommand } from './tools/shell-executor-tool';
+import { GraphingTool } from "./tools/altair-tool";
+
+import { functionDeclarations } from ".";
+
+
+// Types
+interface QueryResult {
+  rows: any[];
+  error?: string;
 }
 
-const host = "generativelanguage.googleapis.com";
-const uri = `wss://${host}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
+interface CommandHistoryEntry {
+  command: string;
+  output?: string;
+  timestamp: string;
+}
+
+interface ToolResponse {
+  success: boolean;
+  output?: any;
+  error?: string;
+}
 
 
 
-function App() {
+
+
+
+// Main App Component
+const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
+    // State
+    const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
+    const [commandHistory, setCommandHistory] = useState<CommandHistoryEntry[]>([]);
+    const [error, setError] = useState<string>('');
+    const [altairJson, setAltairJson] = useState<string>('');
+    
+    const { client, setConfig } = useLiveAPIContext();
+    
+  
+    // LLM Configuration
+    useEffect(() => {
+      setConfig({
+        model: "models/gemini-2.0-flash-exp",
+        generationConfig: {
+          responseModalities: "audio",
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
+          },
+        },
+        systemInstruction: {
+          parts: [{
+            text: `You are a multi-tool assistant capable of:
+              1. PostgreSQL database operations
+              2. Shell command execution (cmd, powershell, gitbash)
+              3. Data visualization using Altair
+  
+              Guidelines:
+              - For database: Use parameterized queries, validate inputs
+              - For shell: Execute commands safely, handle errors
+              - For visualization: Create clear, informative graphs
+              
+              Choose the appropriate tool based on the user's request.`,
+          }],
+        },
+        tools: [
+          { googleSearch: {} },
+          { functionDeclarations: functionDeclarations }
+        ],
+      });
+    }, [setConfig]);
+  
+    
+  
+    const handleShellCommand = async (
+      shell: "cmd" | "powershell" | "gitbash",
+      command: string,
+      workingDir?: string
+    ): Promise<ToolResponse> => {
+      try {
+        const result = await executeCommand(shell, command, workingDir);
+        const newEntry: CommandHistoryEntry = {
+          command: `${shell}: ${command}`,
+          output: result.output || result.error,
+          timestamp: new Date().toISOString(),
+        };
+        setCommandHistory(prev => [...prev, newEntry]);
+        return { success: result.success, output: result.output, error: result.error };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Shell command failed';
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      }
+    };
+  
+    const handleAltairVisualization = (jsonGraph: string): ToolResponse => {
+      try {
+        setAltairJson(jsonGraph);
+        return { success: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Visualization failed';
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      }
+    };
+  
+    // Tool handling functions
+    const handleDatabaseQuery = async (query: string, operation: string, params?: string[]): Promise<ToolResponse> => {
+      try {
+        const response = await executeQuery(query, operation, params);
+        setQueryResult({ rows: response.rows || [] });
+        return { success: true, output: response };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Database query failed';
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      }
+    };
+  
+    // Main tool call handler
+    const handleToolCall = async (functionCall: any, functionId: string) => {
+      let response: ToolResponse;
+  
+      try {
+        switch (functionCall.name) {
+          case "query_database": {
+            const { query, operation, params } = functionCall.args;
+            response = await handleDatabaseQuery(query, operation, params);
+            break;
+          }
+          case "execute_shell_command": {
+            const { shell, command, workingDir } = functionCall.args;
+            response = await handleShellCommand(shell, command, workingDir);
+            break;
+          }
+          case "render_altair": {
+            const { json_graph } = functionCall.args;
+            response = handleAltairVisualization(json_graph);
+            break;
+          }
+          default:
+            throw new Error(`Unknown function: ${functionCall.name}`);
+        }
+  
+        client.sendToolResponse({
+          functionResponses: [{
+            response: { output: response },
+            id: functionId,
+          }],
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setError(errorMessage);
+        client.sendToolResponse({
+          functionResponses: [{
+            response: { output: { success: false, error: errorMessage }},
+            id: functionId,
+          }],
+        });
+      }
+    };
+  
+  
+    // Handle tool calls
+    useEffect(() => {
+      const onToolCall = async (toolCall: ToolCall) => {
+          console.log('Received tool call:', toolCall);
+          
+          for (const functionCall of toolCall.functionCalls) {
+              await handleToolCall(functionCall, functionCall.id);
+          }
+      };
+  
+      client.on("toolcall", onToolCall);
+      return () => {
+          client.off("toolcall", onToolCall);
+      };
+    }, [client]);
+
   return (
     <div className="App">
-      <LiveAPIProvider url={uri} apiKey={API_KEY}>
+      
         <div className="streaming-console">
           <SidePanel />
           <main>
             <div className="main-app-area">
               <div className="tools-container">
-                {/* <Altair />   */}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-                {/* <ShellExecutor /> */}
+              <DatabaseQuery queryResult={queryResult}/>
 
-                {/* <Database /> */}
-
-                <UnifiedTool />
-                
+              <ShellTool commandHistory={commandHistory} />
+              
+              <GraphingTool altairJson={altairJson}/>
               </div>
               <video
                 className={cn("stream", {
@@ -70,19 +238,16 @@ function App() {
                 playsInline
               />
             </div>
-
             <ControlTray
               videoRef={videoRef}
               supportsVideo={true}
               onVideoStreamChange={setVideoStream}
-            >
-              {/* put your own buttons here */}
-            </ControlTray>
+            />
           </main>
         </div>
-      </LiveAPIProvider>
+      {/* </LiveAPIProvider> */}
     </div>
   );
-}
+};
 
 export default App;
