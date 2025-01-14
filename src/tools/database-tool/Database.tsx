@@ -1,29 +1,9 @@
-import { memo } from 'react';
 import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
 
+import { memo } from 'react';
+import { DatabaseToolProps, ToolResponse } from "../../types/tool-types"
 
-const baseDataUrl = 'http://localhost:3001/api/database';
-
-
-export async function executeQuery(query: string, operation: string, params?: any[]): Promise<any> {
-    try {
-        const response = await fetch(`${baseDataUrl}/query`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, operation, params }),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.details || error.error || 'Query execution failed');
-        }
-
-        return await response.json();
-    } catch (error) {
-        throw error;
-    }
-}
-
+const baseDataUrl = process.env.baseDataUrl;
 
 
 // Database Declaration
@@ -53,21 +33,40 @@ export const QUERY_DATABASE_DECLARATION: FunctionDeclaration = {
 };
 
 
+export async function executeQuery(query: string, operation: string, params?: any[]): Promise<any> {
+    try {
+        const response = await fetch(`http://localhost:3001/api/database/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, operation, params }),
+        });
 
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.details || error.error || 'Query execution failed');
+        }
 
-
-// Types
-interface QueryResult {
-    rows: any[];
-    error?: string;
+        return await response.json();
+    } catch (error) {
+        throw error;
+    }
 }
 
 
-interface DatabaseToolProps {
-    queryResult: QueryResult | null;
-  }
-  
-  
+
+export const handleDatabaseQuery = async (query: string, operation: string, params?: string[]): Promise<ToolResponse> => {
+    try {
+      const response = await executeQuery(query, operation, params);
+      return { success: true, output: response };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Database query failed';
+      return { success: false, error: errorMessage };
+    }
+};
+
+
+
+
 function DatabaseTool ({ queryResult }: DatabaseToolProps) {
 
   return (

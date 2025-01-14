@@ -1,20 +1,7 @@
 import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
+import { CommandHistoryEntry, ShellToolProps, ToolResponse } from "../../types/tool-types"
 
-
-
-// Shell Service
-export async function executeCommand(shell: string, command: string, workingDir?: string) {
-    const response = await fetch('http://localhost:3001/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            command: `${shell} /c ${command}`,
-            timeout: 30000 
-        }),
-    });
-    return response.json();
-}
-
+const baseShellUrl = process.env.baseShellUrl;
 
 
 // Shell Executor Declaration
@@ -43,26 +30,43 @@ export const EXECUTE_SHELL_COMMAND_DECLARATION: FunctionDeclaration = {
 };
 
 
-
-
-
-  
-interface CommandHistoryEntry {
-    command: string;
-    output?: string;
-    timestamp: string;
+// Shell Service
+export async function executeCommand(shell: string, command: string, workingDir?: string) {
+    const response = await fetch(`http://localhost:3001/api/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            command: `${shell} /c ${command}`,
+            timeout: 30000 
+        }),
+    });
+    return response.json();
 }
 
 
-interface CommandHistoryEntry {
-  command: string;
-  output?: string;
-  timestamp: string;
-}
+export const handleShellCommand = async (
+        shell: "cmd" | "powershell" | "gitbash",
+        command: string,
+        workingDir?: string
+    ): Promise<ToolResponse> => {
 
-interface ShellToolProps {
-  commandHistory: CommandHistoryEntry[];
-}
+    try {
+      const result = await executeCommand(shell, command, workingDir);
+      const newEntry: CommandHistoryEntry = {
+        command: `${shell}: ${command}`,
+        output: result.output || result.error,
+        timestamp: new Date().toISOString(),
+      };
+      
+      return { success: result.success, output: newEntry, error: result.error };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Shell command failed';
+    
+      return { success: false, error: errorMessage };
+    }
+};
+
+
 
 
 function ShellTool({ commandHistory }: ShellToolProps) {

@@ -19,7 +19,7 @@ import "./logger.scss";
 import { Part } from "@google/generative-ai";
 import cn from "classnames";
 import { ReactNode } from "react";
-import { useLoggerStore } from "../../lib/store-logger";
+import { useLoggerStore } from "./store-logger";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { vs2015 as dark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import {
@@ -38,7 +38,7 @@ import {
   ToolCallCancellationMessage,
   ToolCallMessage,
   ToolResponseMessage,
-} from "../../multimodal-live-types";
+} from "../../types/multimodal-live-types";
 
 const formatTime = (d: Date) => d.toLocaleTimeString().slice(0, -3);
 

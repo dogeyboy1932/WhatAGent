@@ -16,7 +16,7 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "src/**/*", "Trash/Database.tsx", "Trash/shell-executor.tsx"],
+  "include": ["src", "src/**/*", "Trash/Database.tsx", "Trash/shell-executor.tsx", "Trash/toolHandlers.ts"],
   "ts-node": {
     "compilerOptions": {
       "module": "commonjs"

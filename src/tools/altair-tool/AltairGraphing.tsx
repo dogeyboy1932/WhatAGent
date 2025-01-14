@@ -1,6 +1,8 @@
-import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
 import { useEffect, useRef } from "react";
+import { GraphingToolProps } from "../../types/tool-types"
 import vegaEmbed from "vega-embed";
+
+import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
 
 
 // Altair Declaration
@@ -21,11 +23,6 @@ export const RENDER_ALTAIR_DECLARATION: FunctionDeclaration = {
 
 
 
-interface GraphingToolProps {
-    altairJson: string;
-}
-
-
 function GraphingTool({ altairJson }: GraphingToolProps) {
     // State
     const embedRef = useRef<HTMLDivElement>(null);
@@ -33,7 +30,7 @@ function GraphingTool({ altairJson }: GraphingToolProps) {
     // Altair visualization effect
     useEffect(() => {
         if (embedRef.current && altairJson) {
-        vegaEmbed(embedRef.current, JSON.parse(altairJson));
+            vegaEmbed(embedRef.current, JSON.parse(altairJson));
         }
     }, [altairJson]);
 
@@ -41,7 +38,6 @@ function GraphingTool({ altairJson }: GraphingToolProps) {
         <div>
             <div ref={embedRef} className="altair-visualization" />
 
-            {/* Altair Visualization */}
             <div className="vega-embed" ref={embedRef} />
         </div>
     );
