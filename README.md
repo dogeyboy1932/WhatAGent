@@ -7,4 +7,4 @@ change up .env file for agent to access:
  - windows cli
 
 
-working on more custom tooling
+building more custom tooling
